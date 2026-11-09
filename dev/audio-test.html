@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Test audio</title>
+<style>
+body{font:14px sans-serif;background:#1d1a16;color:#eee;margin:16px}
+button{margin:3px;padding:6px 10px}
+label{margin-right:14px}
+table{border-collapse:collapse;margin-top:10px}td,th{border:1px solid #555;padding:3px 8px;font:12px monospace}
+#result{font:bold 16px monospace;margin:10px 0;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h3>Q.Audio — test</h3>
+<div id="result">in corso...</div>
+<div>
+  <button id="b-init">init</button>
+  <button data-a="fanfara">fanfara</button>
+  <button id="b-tamb">tamburi on/off</button>
+  <button data-a="rullo">rullo 3 s</button>
+  <button data-a="cheer">cheer</button>
+  <button data-a="ooh">ooh</button>
+  <button data-a="hit100">hit 100</button>
+  <button data-a="hit60">hit 60</button>
+  <button data-a="penalty">penalty</button>
+</div>
+<div>
+  <label>galoppo m/s <input id="s-speed" type="range" min="0" max="16" step="0.5" value="0"> <span id="v-speed">0</span></label>
+  <label>pubblico <input id="s-crowd" type="range" min="0" max="1" step="0.05" value="0"></label>
+  <label>volume <input id="s-master" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+</div>
+<table id="tab"><tr><th>render offline</th><th>durata s</th><th>picco</th><th>RMS</th><th>esito</th></tr></table>
+<pre id="log"></pre>
+<script>
+window.onerror = function (m, src, line) { document.getElementById('result').textContent = 'RISULTATO: ERRORE\n' + m + ' @ ' + src + ':' + line; };
+</script>
+<script src="../js/audio.js"></script>
+<script>
+(function () {
+  const A = Q.Audio;
+  const errors = [];
+  const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+  const attempt = (name, fn) => {
+    try { fn(); } catch (e) { errors.push(name + ': ' + (e && e.stack || e)); }
+  };
+  const callAll = (tag) => {
+    attempt(tag + ' setMaster', () => A.setMaster(0.8));
+    attempt(tag + ' crowd', () => A.crowd(0.5));
+    attempt(tag + ' cheer', () => A.cheer(1));
+    attempt(tag + ' ooh', () => A.ooh());
+    attempt(tag + ' hit100', () => A.hit(100));
+    attempt(tag + ' hit40', () => A.hit(40));
+    attempt(tag + ' hit0', () => A.hit(0));
+    attempt(tag + ' penalty', () => A.penalty());
+    attempt(tag + ' tamburi on', () => A.tamburi(true));
+    attempt(tag + ' tamburi on bis', () => A.tamburi(true));
+    attempt(tag + ' rullo', () => A.rullo(1.5));
+    attempt(tag + ' fanfara', () => A.fanfara());
+    attempt(tag + ' gallop', () => { A.gallop(8); A.gallop(0); A.gallop(NaN); A.gallop(-3); A.gallop(Infinity); });
+  };
+
+  // 1. prima di init(): nessun effetto, nessun errore
+  callAll('pre-init');
+  attempt('pre-init suspend/resume', () => { A.suspend(); A.resume(); });
+  attempt('pre-init tamburi off', () => A.tamburi(false));
+
+  // 2. dopo init()
+  let ok = false;
+  attempt('init', () => { ok = A.init(); if (!A.init()) throw new Error('init non idempotente'); });
+  if (!ok) errors.push('init: AudioContext non disponibile');
+  callAll('live');
+
+  // 3. galoppo: 200 frame simulati a velocità diverse
+  const live = new Promise((resolve) => {
+    let f = 0;
+    const step = () => {
+      attempt('live gallop frame ' + f, () => A.gallop(f < 40 ? 0 : 3 + (f % 120) / 10));
+      attempt('live crowd frame ' + f, () => A.crowd((f % 100) / 100));
+      if (++f < 200) setTimeout(step, 16);
+      else {
+        attempt('live tamburi off', () => A.tamburi(false));
+        attempt('live suspend/resume', () => A.suspend().then(() => A.resume()));
+        log('live: 200 frame gallop/crowd eseguiti');
+        resolve();
+      }
+    };
+    step();
+  });
+
+  // 4. render offline sul grafo reale (bus + riverbero + compressore + master)
+  const SR = 44100;
+  const STRIDE_M = 3.2;
+  const tab = document.getElementById('tab');
+  function stats(buf) {
+    let peak = 0, sum = 0, n = 0;
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < d.length; i++) {
+        const a = Math.abs(d[i]);
+        if (a > peak) peak = a;
+        sum += d[i] * d[i];
+      }
+      n += d.length;
+    }
+    return { peak, rms: Math.sqrt(sum / n) };
+  }
+  function render(name, secs, build) {
+    const ctx = new OfflineAudioContext(2, Math.ceil(SR * secs), SR);
+    const g = A.createGraph(ctx);
+    let extra;
+    try { extra = build(g, A.voices); } catch (e) {
+      errors.push('offline ' + name + ': ' + (e && e.stack || e));
+      return Promise.resolve();
+    }
+    const t0 = performance.now();
+    return ctx.startRendering().then((buf) => {
+      log('render ' + name + ': ' + Math.round(performance.now() - t0) + ' ms');
+      const s = stats(buf);
+      const pass = s.peak > 0.001 && s.rms > 0.0001 && s.peak < 1;
+      if (!pass) errors.push('offline ' + name + ': picco ' + s.peak.toFixed(4) + ' RMS ' + s.rms.toFixed(5));
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + name + (extra ? ' (' + extra + ')' : '') + '</td><td>' + secs + '</td><td>' + s.peak.toFixed(4) +
+        '</td><td>' + s.rms.toFixed(5) + '</td><td>' + (pass ? 'ok' : 'ERRORE') + '</td>';
+      tab.appendChild(tr);
+    }, (e) => errors.push('offline ' + name + ': ' + e));
+  }
+
+  const offline = typeof OfflineAudioContext === 'undefined' ? Promise.resolve(errors.push('OfflineAudioContext assente')) : Promise.all([
+    render('fanfara', 4.5, (g, v) => { v.fanfara(g.music, 0.05); }),
+    render('tamburi 2 frasi', 5, (g, v) => { v.tamburi(g.music, 0.05, 64); }),
+    render('rullo 2 s', 3.2, (g, v) => { v.rullo(g.music, 0.05, 2); }),
+    render('galoppo 4->14 m/s', 3.6, (g, v) => {
+      // frame a 60 fps su 3 s; poi 30 frame a velocità 0 che non devono programmare nulla
+      const st = { next: 0, beat: 0 };
+      let beats = 0, after = 0;
+      for (let f = 0; f <= 180; f++) beats += v.gallop(g.sfx, st, f / 60, 4 + (10 * f) / 180);
+      for (let f = 181; f <= 210; f++) after += v.gallop(g.sfx, st, f / 60, 0);
+      const expected = (4 / STRIDE_M) * 3 * 9; // appoggi = 4 * falcate; velocità media 9 m/s
+      if (Math.abs(beats - expected) > 4) errors.push('galoppo: ' + beats + ' appoggi, attesi ~' + expected);
+      if (after !== 0) errors.push('galoppo: ' + after + ' appoggi a velocità 0');
+      return beats + ' appoggi, attesi ~' + expected.toFixed(1);
+    }),
+    render('pubblico max', 2.5, (g, v) => { v.crowdBed(g.ambient).gain.value = 0.35; }),
+    render('cheer 1', 4.8, (g, v) => { v.cheer(g.ambient, 0.05, 1); }),
+    render('ooh', 2.5, (g, v) => { v.ooh(g.ambient, 0.05); }),
+    render('hit 100', 2.2, (g, v) => { v.hit(g.sfx, 0.05, 100); }),
+    render('hit 40', 1, (g, v) => { v.hit(g.sfx, 0.05, 40); }),
+    render('penalty', 1, (g, v) => { v.penalty(g.sfx, 0.05); }),
+    render('tutto insieme', 5, (g, v) => {
+      v.crowdBed(g.ambient).gain.value = 0.35;
+      v.tamburi(g.music, 0.05, 64);
+      v.fanfara(g.music, 0.3);
+      v.cheer(g.ambient, 1, 1);
+      v.hit(g.sfx, 1, 100);
+      v.penalty(g.sfx, 2);
+      const st = { next: 0, beat: 0 };
+      for (let f = 0; f <= 240; f++) v.gallop(g.sfx, st, f / 60, 14);
+    }),
+  ]);
+
+  let done = false;
+  Promise.all([live, offline]).then(() => {
+    done = true;
+    document.getElementById('result').textContent = errors.length ? 'RISULTATO: ERRORE\n' + errors.join('\n') : 'RISULTATO: OK';
+  });
+
+  // Con --virtual-time-budget il tempo virtuale salta avanti quando la pagina è inattiva e il DOM viene
+  // scaricato prima che i render offline (su un altro thread) finiscano. Brevi task di calcolo tengono
+  // occupato il thread principale senza consumare tempo virtuale, finché i render non sono completi.
+  let sink = 0;
+  const hold = () => {
+    if (done) return;
+    for (let i = 0; i < 5e5; i++) sink += Math.sqrt(i);
+    setTimeout(hold, 0);
+  };
+  hold();
+
+  // ascolto manuale
+  const actions = {
+    fanfara: () => A.fanfara(), rullo: () => A.rullo(3), cheer: () => A.cheer(1), ooh: () => A.ooh(),
+    hit100: () => A.hit(100), hit60: () => A.hit(60), penalty: () => A.penalty(),
+  };
+  document.getElementById('b-init').onclick = () => { A.init(); A.resume(); };
+  document.querySelectorAll('[data-a]').forEach((b) => { b.onclick = () => { A.init(); actions[b.dataset.a](); }; });
+  let tamb = false;
+  document.getElementById('b-tamb').onclick = () => { A.init(); tamb = !tamb; A.tamburi(tamb); };
+  const speed = document.getElementById('s-speed');
+  speed.oninput = () => { A.init(); document.getElementById('v-speed').textContent = speed.value; };
+  document.getElementById('s-crowd').oninput = (e) => { A.init(); A.crowd(Number(e.target.value)); };
+  document.getElementById('s-master').oninput = (e) => A.setMaster(Number(e.target.value));
+  const loop = () => { A.gallop(Number(speed.value)); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

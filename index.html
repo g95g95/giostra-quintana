@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giostra della Quintana — Ascoli Piceno</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="err"></div>
+<script>
+window.onerror = function (m, src, line) { document.getElementById('err').textContent += m + ' @ ' + src + ':' + line + '\n'; };
+</script>
+
+<div id="view"></div>
+
+<div id="hud" class="hidden">
+  <div class="hud-top">
+    <div class="targa" id="hud-sestiere"><span class="scudo" id="hud-scudo"></span><span><b id="hud-nome"></b><small id="hud-tornata"></small></span></div>
+    <div class="targa tempo"><small>Tempo</small><b id="hud-tempo">0,0</b></div>
+    <div class="targa vel"><b id="hud-vel">0</b><small>km/h</small></div>
+  </div>
+  <div class="hud-assalti">
+    <div class="assalto" id="hud-a0"><i></i><b>—</b></div>
+    <div class="assalto" id="hud-a1"><i></i><b>—</b></div>
+    <div class="assalto" id="hud-a2"><i></i><b>—</b></div>
+    <div class="penalita" id="hud-pen">Penalità: nessuna</div>
+  </div>
+  <div class="mappa"><canvas id="minimappa"></canvas><small>Percorso</small></div>
+  <div id="frena">Frena!</div>
+  <div id="msg"></div>
+  <div id="mirino"><i></i></div>
+  <div id="colpo"></div>
+  <div class="hint" id="hint">W / ↑ galoppa · S / ↓ frena · A D / ← → sterza · mouse o I J K L mira · Esc pausa</div>
+</div>
+
+<section id="menu" class="schermo hidden">
+  <header class="stendardo">
+    <h1>Giostra della Quintana</h1>
+    <p>Ascoli Piceno · Campo dei Giochi «Squarcia»</p>
+  </header>
+  <div class="carta menu-carta">
+    <h2>Scegli il tuo sestiere</h2>
+    <div class="sestieri" id="sestieri"></div>
+    <div class="pulsanti">
+      <button id="btn-aiuto" class="secondario">Come si gioca</button>
+      <button id="btn-gioca">Scendi in campo</button>
+    </div>
+    <p class="record" id="record"></p>
+  </div>
+</section>
+
+<section id="aiuto" class="schermo velo hidden">
+  <div class="carta aiuto">
+    <h2>Come si gioca</h2>
+    <div class="colonne">
+      <div>
+        <h3>La giostra</h3>
+        <p>Corri il percorso a otto: 720 metri di sabbia tra i cordoli. In ogni tornata colpisci tre volte lo scudo del Moro con la lancia. Hai tre tornate contro i cavalieri degli altri cinque sestieri.</p>
+        <h3>Comandi</h3>
+        <table class="comandi">
+          <tr><td><kbd>W</kbd> <kbd>↑</kbd></td><td>Galoppa</td></tr>
+          <tr><td><kbd>S</kbd> <kbd>↓</kbd></td><td>Frena</td></tr>
+          <tr><td><kbd>A</kbd> <kbd>D</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>Sterza</td></tr>
+          <tr><td>Mouse o <kbd>I</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></td><td>Mira con la punta della lancia</td></tr>
+          <tr><td><kbd>Esc</kbd> <kbd>P</kbd></td><td>Pausa</td></tr>
+          <tr><td><kbd>M</kbd></td><td>Suono sì / no</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>Punteggio</h3>
+        <ul>
+          <li>Scudo del Moro: <b>100 · 80 · 60 · 40 · 20</b> punti dal centro verso il bordo.</li>
+          <li>Tempo: 60,0 s valgono <b>200</b> punti. Ogni decimo in meno vale +2, ogni decimo in più −2.</li>
+          <li>Cordolo spostato o due zoccoli fuori: <b>−30</b> punti.</li>
+          <li>Quattro zoccoli fuori dalla pista: <b>tornata nulla</b>.</li>
+        </ul>
+        <h3>Consigli</h3>
+        <ul>
+          <li>Il cronometro parte sulla linea bianca.</li>
+          <li>Frena prima delle curve: quando sei troppo veloce compare l'avviso <b>Frena!</b></li>
+          <li>Prima del Moro la lancia si abbassa da sola. Porta il mirino al centro dello scudo: diventa d'oro sul bersaglio.</li>
+          <li>Più corri, più la lancia oscilla.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="pulsanti"><button id="btn-aiuto-chiudi">Ho capito</button></div>
+  </div>
+</section>
+
+<section id="intro" class="hidden">
+  <div class="didascalia" id="intro-testo"></div>
+  <div class="salta">Clic o Spazio per saltare</div>
+</section>
+
+<section id="riepilogo" class="schermo velo hidden">
+  <div class="carta stretta">
+    <h2 id="rie-titolo">Riepilogo della tornata</h2>
+    <table class="tabella" id="rie-tabella"></table>
+    <div class="pulsanti"><button id="btn-rie">Gli altri cavalieri</button></div>
+  </div>
+</section>
+
+<section id="risultati" class="schermo velo hidden">
+  <div class="carta">
+    <h2 id="ris-titolo">Tornata</h2>
+    <div class="colonne">
+      <div><h3>Risultati della tornata</h3><table class="tabella" id="ris-tornata"></table></div>
+      <div><h3>Classifica</h3><table class="tabella" id="ris-classifica"></table></div>
+    </div>
+    <div class="pulsanti"><button id="btn-ris">Tornata successiva</button></div>
+  </div>
+</section>
+
+<section id="finale" class="schermo velo hidden">
+  <div class="carta">
+    <div class="palio" id="palio"><div class="drappo"><span>Palio</span></div></div>
+    <h2 id="fin-titolo"></h2>
+    <p class="sottotitolo" id="fin-testo"></p>
+    <table class="tabella" id="fin-classifica"></table>
+    <p class="record" id="fin-record"></p>
+    <div class="pulsanti"><button id="btn-ancora">Gioca ancora</button></div>
+  </div>
+</section>
+
+<section id="pausa" class="schermo velo hidden">
+  <div class="carta stretta">
+    <h2>Pausa</h2>
+    <div class="pulsanti colonna">
+      <button id="btn-riprendi">Riprendi</button>
+      <button id="btn-pausa-aiuto" class="secondario">Come si gioca</button>
+      <button id="btn-menu" class="secondario">Torna al menu</button>
+    </div>
+  </div>
+</section>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/track.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/world.js"></script>
+<script src="js/figuranti.js"></script>
+<script src="js/horse.js"></script>
+<script src="js/moro.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
