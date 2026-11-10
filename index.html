@@ -2,7 +2,9 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Giostra della Quintana — Ascoli Piceno</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -34,6 +36,13 @@ window.onerror = function (m, src, line) { document.getElementById('err').textCo
   <div class="hint" id="hint">W / ↑ galoppa · S / ↓ frena · A D / ← → sterza · mouse o I J K L mira · Esc pausa</div>
 </div>
 
+<div id="touch" class="hidden">
+  <div class="zona" id="zona-sx"><div class="pomo" id="pomo-sx"></div></div>
+  <div class="zona" id="zona-dx"><div class="pomo" id="pomo-dx"><b>Galoppa</b><small>trascina: mira</small></div></div>
+  <button id="btn-pausa-touch" class="secondario" aria-label="Pausa">❙❙</button>
+</div>
+<div id="ruota">Ruota il telefono in orizzontale</div>
+
 <section id="menu" class="schermo hidden">
   <header class="stendardo">
     <h1>Giostra della Quintana</h1>
@@ -58,7 +67,15 @@ window.onerror = function (m, src, line) { document.getElementById('err').textCo
         <h3>La giostra</h3>
         <p>Corri il percorso a otto: 720 metri di sabbia tra i cordoli. In ogni tornata colpisci tre volte lo scudo del Moro con la lancia. Hai tre tornate contro i cavalieri degli altri cinque sestieri.</p>
         <h3>Comandi</h3>
-        <table class="comandi">
+        <table class="comandi tocco">
+          <tr><td>Inclina il telefono</td><td>Sterza, come un volante</td></tr>
+          <tr><td>Pollice destro premuto</td><td>Galoppa</td></tr>
+          <tr><td>Pollice destro trascinato</td><td>Mira con la punta della lancia</td></tr>
+          <tr><td>Pollice sinistro</td><td>Frena</td></tr>
+          <tr><td>Senza sensore</td><td>Il pollice sinistro sterza in orizzontale e frena verso il basso</td></tr>
+          <tr><td>Pulsante <kbd>❙❙</kbd></td><td>Pausa e scelta dello sterzo</td></tr>
+        </table>
+        <table class="comandi tasti">
           <tr><td><kbd>W</kbd> <kbd>↑</kbd></td><td>Galoppa</td></tr>
           <tr><td><kbd>S</kbd> <kbd>↓</kbd></td><td>Frena</td></tr>
           <tr><td><kbd>A</kbd> <kbd>D</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>Sterza</td></tr>
@@ -90,7 +107,7 @@ window.onerror = function (m, src, line) { document.getElementById('err').textCo
 
 <section id="intro" class="hidden">
   <div class="didascalia" id="intro-testo"></div>
-  <div class="salta">Clic o Spazio per saltare</div>
+  <div class="salta" id="salta">Clic o Spazio per saltare</div>
 </section>
 
 <section id="riepilogo" class="schermo velo hidden">
@@ -128,6 +145,7 @@ window.onerror = function (m, src, line) { document.getElementById('err').textCo
     <h2>Pausa</h2>
     <div class="pulsanti colonna">
       <button id="btn-riprendi">Riprendi</button>
+      <button id="btn-sterzo" class="secondario"></button>
       <button id="btn-pausa-aiuto" class="secondario">Come si gioca</button>
       <button id="btn-menu" class="secondario">Torna al menu</button>
     </div>

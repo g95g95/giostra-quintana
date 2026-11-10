@@ -15,6 +15,18 @@ Videogioco 3D puro frontend sulla Quintana di Ascoli Piceno. Sei il cavaliere di
 | Mouse oppure I / K / J / L | Mira della lancia |
 | Esc oppure P | Pausa |
 
+Sul telefono, in orizzontale:
+
+| Gesto | Azione |
+|---|---|
+| Inclina il telefono | Sterza, come un volante |
+| Pollice destro premuto | Galoppa |
+| Pollice destro trascinato | Mira della lancia |
+| Pollice sinistro | Frena |
+| Pulsante ❙❙ | Pausa e scelta dello sterzo (inclinazione o pollice) |
+
+Su iPhone il gioco chiede il permesso per il sensore di movimento. Senza sensore il pollice sinistro sterza in orizzontale e frena verso il basso.
+
 ## Regole
 
 - 3 tornate, 3 assalti al Moro per tornata, percorso a otto di 720 m.

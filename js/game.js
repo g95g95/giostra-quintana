@@ -10,6 +10,8 @@
   const AUTO = Number(qs.get('auto') || 0);
   const FF = Number(qs.get('ff') || 0);
   const DEBUG = AUTO > 0 || FF > 0;
+  // telefono o tablet: comandi touch e sterzo con l'inclinazione (?touch=1 li forza per le prove)
+  const TOUCH = qs.has('touch') || matchMedia('(hover: none) and (pointer: coarse)').matches;
 
   const STEP = 1 / 60;
   const ACC = 4;
@@ -77,7 +79,7 @@
 
   // ---------- scena ----------
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: DEBUG });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
   $('view').appendChild(renderer.domElement);
   const scene = new THREE.Scene();
@@ -181,14 +183,16 @@
   });
   addEventListener('keyup', (e) => { keys[e.code] = false; });
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-  addEventListener('mousemove', (e) => {
+  // solo il mouse: dopo un tocco il browser genera eventi mouse di compatibilità
+  addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
     mouse.nx = clamp((e.clientX / innerWidth) * 2 - 1, -1, 1);
     mouse.ny = clamp((e.clientY / innerHeight) * 2 - 1, -1, 1);
     mouse.active = true;
   });
   addEventListener('pointerdown', initAudio);
   // un pulsante col fuoco riceverebbe anche Invio e Spazio, già gestiti da onKey
-  document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); askTilt(); });
   $('view').addEventListener('click', () => { if (G.state === 'intro') startTornata(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && !DEBUG) setPaused(true); });
 
@@ -211,10 +215,107 @@
     }
   }
 
+  // ---------- touch e inclinazione ----------
+  // Pollice destro: premuto galoppa, trascinato muove la mira. Pollice sinistro: frena.
+  // Lo sterzo è l'inclinazione del telefono; senza sensore il pollice sinistro fa da leva
+  // (in orizzontale sterza, verso il basso frena).
+  const RAD = Math.PI / 180;
+  const TILT_DEAD = 2;
+  const TILT_FULL = 22;
+  const AIM_DRAG = 110;
+  const STICK = 55;
+  const tilt = { on: record.tilt !== false, ok: false, asked: false, steer: 0 };
+  const pad = { sx: null, dx: null };
+  const tiltActive = () => tilt.on && tilt.ok;
+
+  function onTilt(e) {
+    if (e.beta === null || e.gamma === null) return;
+    const b = e.beta * RAD;
+    const g = e.gamma * RAD;
+    const a = (screen.orientation ? screen.orientation.angle : window.orientation || 0) * RAD;
+    // "su" del mondo lungo l'asse orizzontale dello schermo: vale per il telefono verticale o quasi piatto
+    const up = Math.cos(a) * -Math.cos(b) * Math.sin(g) - Math.sin(a) * Math.sin(b);
+    const deg = Math.asin(clamp(-up, -1, 1)) / RAD;
+    tilt.steer = Math.sign(deg) * clamp((Math.abs(deg) - TILT_DEAD) / (TILT_FULL - TILT_DEAD), 0, 1);
+    if (!tilt.ok) { tilt.ok = true; refreshTouch(); }
+  }
+
+  // iOS concede il sensore solo su richiesta fatta dentro un gesto dell'utente
+  function askTilt() {
+    if (!TOUCH || !tilt.on || tilt.asked || typeof DeviceOrientationEvent === 'undefined') return;
+    tilt.asked = true;
+    const listen = () => addEventListener('deviceorientation', onTilt);
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then((r) => { if (r === 'granted') listen(); else tilt.asked = false; }, () => { tilt.asked = false; });
+    } else listen();
+  }
+
+  function goLandscape() {
+    const el = document.documentElement;
+    const lock = () => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); };
+    if (document.fullscreenElement || !el.requestFullscreen) lock();
+    else el.requestFullscreen({ navigationUI: 'hide' }).then(lock, lock);
+  }
+
+  function refreshTouch() {
+    $('pomo-sx').innerHTML = tiltActive() ? '<b>Frena</b>' : '<b>◄ ►</b><small>sterza<br>giù: frena</small>';
+    $('btn-sterzo').textContent = 'Sterzo: ' + (!tilt.on ? 'pollice' : tilt.ok ? 'inclinazione' : 'inclinazione (sensore non attivo)');
+  }
+
+  function bindPad(side, onMove) {
+    const el = $('zona-' + side);
+    const pomo = $('pomo-' + side);
+    const end = (e) => {
+      if (!pad[side] || pad[side].id !== e.pointerId) return;
+      pad[side] = null;
+      pomo.classList.remove('on');
+      pomo.style.transform = '';
+    };
+    el.addEventListener('pointerdown', (e) => {
+      if (pad[side]) return;
+      el.setPointerCapture(e.pointerId);
+      pad[side] = { id: e.pointerId, x: e.clientX, y: e.clientY, ax: H.aimTX, ay: H.aimTY, steer: 0, brake: false };
+      pomo.classList.add('on');
+      askTilt();
+    });
+    el.addEventListener('pointermove', (e) => {
+      const p = pad[side];
+      if (p && p.id === e.pointerId) onMove(p, e.clientX - p.x, e.clientY - p.y, pomo);
+    });
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+  bindPad('dx', (p, dx, dy) => {
+    mouse.active = false;
+    H.aimTX = clamp(p.ax + (dx / AIM_DRAG) * AIM_MAX, -AIM_MAX, AIM_MAX);
+    H.aimTY = clamp(p.ay - (dy / AIM_DRAG) * AIM_MAX, -AIM_MAX, AIM_MAX);
+  });
+  bindPad('sx', (p, dx, dy, pomo) => {
+    if (tiltActive()) return;
+    p.steer = clamp(dx / STICK, -1, 1);
+    p.brake = dy > STICK * 0.6;
+    pomo.style.transform = 'translate(' + (p.steer * STICK).toFixed(0) + 'px,' + (p.brake ? 18 : 0) + 'px)';
+  });
+  $('btn-pausa-touch').addEventListener('click', () => setPaused(true));
+  $('btn-sterzo').addEventListener('click', () => {
+    tilt.on = !tilt.on;
+    record.tilt = tilt.on;
+    saveRecord(record);
+    askTilt();
+    refreshTouch();
+  });
+  if (TOUCH) {
+    document.documentElement.classList.add('touch');
+    $('salta').textContent = 'Tocca per saltare';
+  }
+
   function playerControls(dt) {
     const k = keys;
-    const throttle = k.KeyW || k.ArrowUp ? 1 : k.KeyS || k.ArrowDown ? -1 : 0;
-    const steer = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+    let throttle = k.KeyW || k.ArrowUp ? 1 : k.KeyS || k.ArrowDown ? -1 : 0;
+    let steer = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+    if (pad.sx && (tiltActive() || pad.sx.brake)) throttle = -1;
+    else if (pad.dx) throttle = 1;
+    steer = clamp(steer + (tiltActive() ? tilt.steer : pad.sx ? pad.sx.steer : 0), -1, 1);
     const ax = (k.KeyL ? 1 : 0) - (k.KeyJ ? 1 : 0);
     const ay = (k.KeyI ? 1 : 0) - (k.KeyK ? 1 : 0);
     if (ax || ay) {
@@ -500,7 +601,8 @@
       sfx('tamburi', true);
       sfx('rullo', 2.5);
       sfx('crowd', 0.45);
-      msg('Tornata ' + G.tornata + ' di ' + R.TORNATE, 30, '', AUTO ? 'Pilota automatico' : 'Tieni premuto W o ↑ per partire, sterza con A e D');
+      msg('Tornata ' + G.tornata + ' di ' + R.TORNATE, 30, '', AUTO ? 'Pilota automatico' : !TOUCH ? 'Tieni premuto W o ↑ per partire, sterza con A e D'
+        : 'Tieni premuto a destra per partire. ' + (tiltActive() ? 'Inclina il telefono per sterzare' : 'Sterza con il pollice sinistro'));
     } else if (s === 'menu') {
       sfx('tamburi', false);
       sfx('crowd', 0.3);
@@ -526,6 +628,14 @@
     show('risultati', s === 'fineTornata' && G.phase === 'risultati' && !G.paused);
     show('finale', s === 'finale');
     show('pausa', G.paused);
+    const pads = TOUCH && !AUTO && (s === 'pronto' || s === 'corsa') && !G.paused;
+    show('touch', pads);
+    if (!pads) {
+      pad.sx = pad.dx = null;
+      $('pomo-sx').classList.remove('on');
+      $('pomo-dx').classList.remove('on');
+    }
+    refreshTouch();
     $('hint').classList.toggle('on', s === 'pronto' && !AUTO);
   }
 
@@ -641,6 +751,7 @@
   $('btn-aiuto-chiudi').addEventListener('click', closeAiuto);
   $('btn-gioca').addEventListener('click', () => {
     initAudio();
+    if (TOUCH) goLandscape();
     newGame(G.sestiere);
     buildIntro();
     setState('intro');
@@ -648,7 +759,7 @@
   $('btn-rie').addEventListener('click', () => setPhase('risultati'));
   $('btn-ris').addEventListener('click', nextTornata);
   $('btn-ancora').addEventListener('click', toMenu);
-  $('btn-riprendi').addEventListener('click', () => setPaused(false));
+  $('btn-riprendi').addEventListener('click', () => { if (TOUCH) goLandscape(); setPaused(false); });
   $('btn-menu').addEventListener('click', () => { setPaused(false); toMenu(); });
 
   function toMenu() {
@@ -952,6 +1063,7 @@
     renderer.setSize(vw, vh);
     camera.aspect = vw / vh;
     camera.updateProjectionMatrix();
+    if (TOUCH && vh > vw && (G.state === 'pronto' || G.state === 'corsa')) setPaused(true);
   }
   addEventListener('resize', resize);
 
@@ -990,10 +1102,29 @@
     if (DEBUG) debugTitle();
   }
 
+  // Qualità adattiva: se più di metà dei frame supera 30 ms toglie un livello alla volta.
+  const LOWER = [
+    () => renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), 1)),
+    () => { sun.castShadow = false; },
+    () => renderer.setPixelRatio(0.75),
+  ];
+  // Conta i frame lenti e non la media: un singolo salto (scheda tornata visibile) non deve abbassare la qualità.
+  const perf = { n: 0, slow: 0, sum: 0, level: 0 };
+  function adaptQuality(dt) {
+    if (DEBUG || G.paused || dt <= 0 || dt > 2 || perf.level >= LOWER.length) return;
+    perf.n++;
+    perf.sum += dt;
+    if (dt > 0.03) perf.slow++;
+    if (perf.n < 3 || (perf.n < 90 && perf.sum < 3)) return;
+    if (perf.slow > perf.n / 2) LOWER[perf.level++]();
+    perf.n = perf.slow = perf.sum = 0;
+  }
+
   let last = 0;
   function loop(now) {
     const dt = last ? (now - last) / 1000 : 0;
     last = now;
+    adaptQuality(dt);
     frame(dt, true);
     renderer.render(scene, camera);
     requestAnimationFrame(loop);

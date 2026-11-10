@@ -10,6 +10,8 @@ Gioco 3D puro frontend sulla Quintana di Ascoli Piceno. Il giocatore è il caval
 - Screenshot headless: `bash tools/shot.sh "index.html?auto=1&ff=20" shots/x.png` (Edge headless con SwiftShader).
 - Parametri di debug di `index.html`: `auto=1` pilota automatico per una tornata; `auto=3` tre tornate fino al finale; `ff=N` simula N secondi prima del primo frame; `live=1` continua dopo `ff`; `sestiere=id` salta il menu. Con `auto` o `ff` il `document.title` riporta stato, `s`, tempo e punti.
 - Edge headless esegue `requestAnimationFrame` solo 1-2 volte: per avanzare serve `ff`.
+- `touch=1` forza i comandi da telefono su desktop.
+- Prova da telefono emulato (tocchi e sensore via CDP, Edge headless con GPU): `node tools/mobile_e2e.mjs "file:///<percorso>/index.html" <cartella screenshot> tilt` e poi `stick`.
 - Anteprima dei moduli: `dev/preview.html?mods=world,figuranti,horse,moro&cam=x,y,z&look=x,y,z&t=2`.
 
 ## Architettura
@@ -29,6 +31,15 @@ Script classici caricati in ordine da `index.html`; namespace globale `Q`; Three
 | `js/game.js` | Stati di gioco, fisica, camera, HUD, avversari simulati |
 
 Convenzioni: +X est, +Z sud, Y alto, metri. `yaw` = `rotation.y` con "avanti" locale +Z.
+
+## Comandi
+
+- Tastiera: W/S o ↑/↓ velocità, A/D o ←/→ sterzo, mouse o I/J/K/L mira, Esc/P pausa, M audio.
+- Telefono (`TOUCH` in `js/game.js`, da media query `hover: none` e `pointer: coarse`): inclinazione = sterzo (`deviceorientation`, 2° di zona morta, 22° = sterzo pieno), pollice destro premuto = galoppo e trascinato = mira, pollice sinistro = freno.
+- Senza sensore, o con "Sterzo: pollice" nel menu di pausa, il pollice sinistro fa da leva: orizzontale sterza, giù frena.
+- Il sensore richiede HTTPS o `file://`; su iOS serve il permesso, chiesto al primo clic.
+- Su telefono il gioco chiede schermo intero e blocco in orizzontale; in verticale mostra "Ruota il telefono".
+- Qualità adattiva: se più di metà dei frame supera 30 ms scende a pixel ratio 1, poi senza ombre, poi pixel ratio 0,75.
 
 ## Regole di gioco (da tenere allineate al codice)
 

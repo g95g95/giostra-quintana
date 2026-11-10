@@ -11,7 +11,11 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: var(--serif); color: var(--pergamena); user-select: none; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #000; font-family: var(--serif); color: var(--pergamena);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+}
+#view { touch-action: none; }
 #view canvas { display: block; }
 .hidden { display: none !important; }
 #err { position: fixed; left: 8px; top: 8px; color: #f55; font: 14px monospace; white-space: pre-wrap; z-index: 99; pointer-events: none; }
@@ -227,3 +231,94 @@ kbd {
 #finale.vittoria .carta { max-width: min(580px, 52vw); padding: 16px 24px 18px; }
 #finale.vittoria #fin-titolo { font-size: 24px; }
 #finale.vittoria .tabella { font-size: 14px; }
+
+/* ---------- telefono: comandi touch ---------- */
+#touch { position: fixed; inset: 0; z-index: 12; }
+.zona { position: absolute; top: 0; bottom: 0; width: 50%; touch-action: none; }
+#zona-sx { left: 0; }
+#zona-dx { right: 0; }
+.pomo {
+  position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); width: 96px; height: 96px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  background: rgba(28, 12, 8, 0.45); border: 2px solid rgba(240, 215, 122, 0.7);
+  text-shadow: 0 1px 2px #000; pointer-events: none;
+}
+#pomo-sx { left: max(22px, env(safe-area-inset-left)); }
+#pomo-dx { right: max(22px, env(safe-area-inset-right)); }
+.pomo b { font-weight: normal; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+.pomo small { font-size: 11px; }
+.pomo.on { background: rgba(125, 17, 25, 0.8); border-color: var(--oro-chiaro); }
+#btn-pausa-touch { position: absolute; top: 70px; right: max(14px, env(safe-area-inset-right)); padding: 4px 14px; font-size: 15px; }
+#ruota {
+  display: none; position: fixed; inset: 0; z-index: 40; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; font-size: 24px; background: rgba(20, 8, 4, 0.94);
+}
+@media (orientation: portrait) { html.touch body:not(.menu):not(.finale) #ruota { display: flex; } }
+.comandi.tocco, #btn-sterzo { display: none; }
+html.touch .comandi.tocco { display: table; }
+html.touch #btn-sterzo { display: block; }
+html.touch .comandi.tasti, html.touch .hint { display: none; }
+html.touch .hud-top { left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); }
+html.touch .mappa { left: max(14px, env(safe-area-inset-left)); bottom: auto; top: 70px; }
+html.touch .mappa canvas { width: 60px; height: 132px; }
+
+/* ---------- schermi bassi (telefono in orizzontale) ---------- */
+@media (max-height: 520px) {
+  button { font-size: 15px; padding: 7px 16px; }
+  .schermo { gap: 8px; padding: 8px; }
+  .carta { padding: 10px 18px 12px; max-height: 96vh; max-height: 96dvh; }
+  .carta h2 { font-size: 18px; margin-bottom: 6px; }
+  .carta h2::after { display: none; }
+  .carta h3 { font-size: 14px; margin: 6px 0 4px; }
+  .carta p, .carta li, .tabella, .comandi { font-size: 13px; line-height: 1.3; }
+  .tabella td { padding: 3px 6px; }
+  .tabella tr.totale td { font-size: 15px; }
+  .colonne { gap: 16px; }
+  .pulsanti { margin-top: 10px; gap: 10px; }
+  .record { margin-top: 6px; font-size: 12px; }
+  #menu { padding: 6px 8px 8px; }
+  .stendardo { padding: 4px 30px 18px; }
+  .stendardo h1 { font-size: 24px; }
+  .stendardo p { font-size: 10px; margin-top: 2px; }
+  .menu-carta h2 { font-size: 15px; margin-bottom: 6px; }
+  .sestiere { padding: 5px 4px; font-size: 12px; gap: 3px; }
+  .sestiere .scudo { width: 28px; height: 34px; }
+  .sestieri { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .palio .drappo { width: 54px; height: 78px; }
+  .palio .drappo span { font-size: 12px; transform: translateY(-8px); }
+  #fin-titolo, #finale.vittoria #fin-titolo { font-size: 18px; }
+  .didascalia { bottom: 8vh; padding: 6px 20px; font-size: 16px; }
+
+  .hud-top { top: 8px; }
+  .targa { min-height: 36px; padding: 3px 10px; gap: 6px; }
+  .targa small { font-size: 9px; }
+  #hud-sestiere b { font-size: 14px; }
+  #hud-sestiere .scudo { width: 20px; height: 24px; }
+  .targa.tempo { min-width: 96px; padding: 2px 14px 3px; }
+  .targa.tempo b { font-size: 24px; }
+  .targa.vel { min-width: 84px; }
+  .targa.vel b { font-size: 20px; }
+  .hud-assalti { top: 56px; gap: 6px; }
+  .assalto { width: 36px; }
+  .assalto i { width: 20px; height: 20px; }
+  .assalto b { font-size: 13px; }
+  .penalita { font-size: 12px; padding: 2px 8px; }
+  #frena { font-size: 20px; padding: 3px 18px; top: 152px; }
+  #msg { top: 102px; }
+  #colpo { font-size: 36px; }
+  #colpo.zero { font-size: 26px; }
+  .mappa small { display: none; }
+  html.touch .mappa { top: 52px; padding: 4px; }
+  html.touch .mappa canvas { width: 50px; height: 110px; }
+  #btn-pausa-touch { top: 52px; }
+  .pomo { width: 84px; height: 84px; }
+}
+
+@media (max-height: 330px) {
+  .stendardo { padding: 2px 24px 12px; }
+  .stendardo h1 { font-size: 19px; }
+  .stendardo p, .menu-carta h2, .record { display: none; }
+  .menu-carta { padding: 8px 12px; }
+  .sestiere { font-size: 11px; }
+  .pulsanti { margin-top: 8px; }
+}
