@@ -254,9 +254,9 @@ kbd {
   padding: 24px; text-align: center; font-size: 24px; background: rgba(20, 8, 4, 0.94);
 }
 @media (orientation: portrait) { html.touch body:not(.menu):not(.finale) #ruota { display: flex; } }
-.comandi.tocco, #btn-sterzo { display: none; }
+.comandi.tocco, #btn-sterzo, #btn-grafica { display: none; }
 html.touch .comandi.tocco { display: table; }
-html.touch #btn-sterzo { display: block; }
+html.touch #btn-sterzo, html.touch #btn-grafica { display: block; }
 html.touch .comandi.tasti, html.touch .hint { display: none; }
 html.touch .hud-top { left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); }
 html.touch .mappa { left: max(14px, env(safe-area-inset-left)); bottom: auto; top: 70px; }

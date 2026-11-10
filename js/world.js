@@ -231,13 +231,14 @@
   }
 
   Q.World = {
-    build(scene, renderer) {
+    build(scene, renderer, opts) {
+      const lite = !!(opts && opts.lite);
       const L = Q.LAYOUT, tr = Q.track, A = L.arena;
       const rnd = rng(20240804);
       const aniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
       if (renderer) {
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = lite ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
       }
       UNIT.box = UNIT.box || new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
       const lambertVC = (opts) => new THREE.MeshLambertMaterial(Object.assign({ vertexColors: true }, opts));
@@ -266,7 +267,7 @@
       const sun = new THREE.DirectionalLight(0xffe2b8, 0.78);
       sun.userData.offset = new THREE.Vector3().fromArray(SUN_OFFSET);
       sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.mapSize.setScalar(lite ? 1024 : 2048);
       const sc = sun.shadow.camera;
       sc.left = -25; sc.right = 25; sc.top = 25; sc.bottom = -25;
       sc.near = 1; sc.far = 220;
@@ -397,7 +398,8 @@
           im.setMatrixAt(i, mat(c.o.x, 0, c.o.z, tr.yawOf(c.o)));
           im.setColorAt(i, C(c.col));
         });
-        im.castShadow = im.receiveShadow = true;
+        im.castShadow = !lite;
+        im.receiveShadow = true;
         scene.add(im);
       }
 
@@ -435,7 +437,8 @@
           const dx = b[0] - a[0], dz = b[1] - a[1];
           im.setMatrixAt(i, mat(a[0], 0, a[1], Math.atan2(dx, dz), 1, 1, Math.hypot(dx, dz) / SEG));
         });
-        im.castShadow = im.receiveShadow = true;
+        im.castShadow = !lite;
+        im.receiveShadow = true;
         scene.add(im);
       }
 
@@ -658,7 +661,8 @@
         sm.receiveShadow = true;
         scene.add(sm);
         const am = new THREE.Mesh(arch.build(), lambertVC());
-        am.castShadow = am.receiveShadow = true;
+        am.castShadow = !lite;
+        am.receiveShadow = true;
         scene.add(am);
       }
 
@@ -858,8 +862,9 @@
           if (!clear(x, z, 2)) continue;
           cyp.push({ x, z, y: hillH(x, z) - 0.3, h: 9 + rnd() * 8, r: 1.1 + rnd() * 0.6 });
         }
-        const crownG = new THREE.IcosahedronGeometry(1, 1);
-        const trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, 5);
+        if (lite) round.splice(0, round.length, ...round.filter((t, i) => i % 8 < 3));
+        const crownG = new THREE.IcosahedronGeometry(1, lite ? 0 : 1);
+        const trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, lite ? 3 : 5, 1, lite);
         trunkG.translate(0, 0.5, 0);
         const cypG = new THREE.LatheGeometry([[0, 0], [0.55, 0.3], [0.95, 1.6], [1, 3.2], [0.85, 5.5], [0.55, 7.6], [0.2, 9.3], [0, 10]].map((p) => new THREE.Vector2(p[0], p[1])), 8);
         const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshLambertMaterial({ color: 0xffffff }), round.length);

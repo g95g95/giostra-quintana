@@ -76,15 +76,17 @@
     try { localStorage.setItem(STORE, JSON.stringify(r)); } catch (e) { /* localStorage non disponibile: il record resta in memoria */ }
   }
   let record = loadRecord();
+  // telefono: grafica leggera, salvo scelta "alta" nel menu di pausa
+  const LITE = TOUCH && record.grafica !== 'alta';
 
   // ---------- scena ----------
-  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: DEBUG });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2));
+  const renderer = new THREE.WebGLRenderer({ antialias: !LITE, preserveDrawingBuffer: DEBUG });
+  renderer.setPixelRatio(LITE ? 1 : Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
   $('view').appendChild(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1500);
-  const world = Q.World.build(scene, renderer);
+  const world = Q.World.build(scene, renderer, { lite: LITE });
   const sun = world.sun;
   if (!sun.target.parent) scene.add(sun.target);
   const moro = Q.Moro.create();
@@ -108,7 +110,7 @@
     if (figId === id) return;
     disposeObjects(figObjs);
     const before = new Set(scene.children);
-    fig = Q.Figuranti.build(scene, { playerSestiereId: id });
+    fig = Q.Figuranti.build(scene, { playerSestiereId: id, lite: LITE });
     figObjs = scene.children.filter((o) => !before.has(o));
     figId = id;
   }
@@ -259,6 +261,7 @@
 
   function refreshTouch() {
     $('pomo-sx').innerHTML = tiltActive() ? '<b>Frena</b>' : '<b>◄ ►</b><small>sterza<br>giù: frena</small>';
+    $('btn-grafica').textContent = 'Grafica: ' + (LITE ? 'leggera' : 'alta risoluzione');
     $('btn-sterzo').textContent = 'Sterzo: ' + (!tilt.on ? 'pollice' : tilt.ok ? 'inclinazione' : 'inclinazione (sensore non attivo)');
   }
 
@@ -303,6 +306,12 @@
     saveRecord(record);
     askTilt();
     refreshTouch();
+  });
+  $('btn-grafica').addEventListener('click', () => {
+    if (!confirm('Il gioco si riavvia e la partita in corso si perde. Continuare?')) return;
+    record.grafica = LITE ? 'alta' : 'leggera';
+    saveRecord(record);
+    location.reload();
   });
   if (TOUCH) {
     document.documentElement.classList.add('touch');
@@ -1102,7 +1111,7 @@
     if (DEBUG) debugTitle();
   }
 
-  // Qualità adattiva: se più di metà dei frame supera 30 ms toglie un livello alla volta.
+  // Qualità adattiva: se più di metà dei frame supera 20 ms toglie un livello alla volta.
   const LOWER = [
     () => renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), 1)),
     () => { sun.castShadow = false; },
@@ -1114,7 +1123,7 @@
     if (DEBUG || G.paused || dt <= 0 || dt > 2 || perf.level >= LOWER.length) return;
     perf.n++;
     perf.sum += dt;
-    if (dt > 0.03) perf.slow++;
+    if (dt > 0.02) perf.slow++;
     if (perf.n < 3 || (perf.n < 90 && perf.sum < 3)) return;
     if (perf.slow > perf.n / 2) LOWER[perf.level++]();
     perf.n = perf.slow = perf.sum = 0;

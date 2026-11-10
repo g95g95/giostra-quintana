@@ -39,7 +39,8 @@ Convenzioni: +X est, +Z sud, Y alto, metri. `yaw` = `rotation.y` con "avanti" lo
 - Senza sensore, o con "Sterzo: pollice" nel menu di pausa, il pollice sinistro fa da leva: orizzontale sterza, giù frena.
 - Il sensore richiede HTTPS o `file://`; su iOS serve il permesso, chiesto al primo clic.
 - Su telefono il gioco chiede schermo intero e blocco in orizzontale; in verticale mostra "Ruota il telefono".
-- Qualità adattiva: se più di metà dei frame supera 30 ms scende a pixel ratio 1, poi senza ombre, poi pixel ratio 0,75.
+- Grafica su telefono: "leggera" di default (`LITE` in `js/game.js`): pixel ratio 1, niente antialias, ombre 1024 solo da cavallo e Moro, pubblico low-poly, meno alberi. "Grafica: alta risoluzione" nel menu di pausa salva la scelta nel record e ricarica la pagina. `touch=1` attiva anche la grafica leggera.
+- Qualità adattiva: se più di metà dei frame supera 20 ms scende a pixel ratio 1, poi senza ombre, poi pixel ratio 0,75.
 
 ## Regole di gioco (da tenere allineate al codice)
 

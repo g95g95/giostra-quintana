@@ -139,3 +139,15 @@ Camera e resa:
 - Verifica finale: 3 test su 3 passati; pilota automatico 50,3 s, colpi 100/100/80, 674 punti, nessuna penalità; tre tornate fino al finale con 1982 punti.
 - Prestazioni misurate su Radeon 660M a 1920×1080: mediana 9,9 ms per frame, 70 draw call, 1,35 milioni di triangoli.
 - Non verificato: audio all'ascolto (solo misure di picco e RMS), gioco con mani umane su tastiera e mouse (solo bot con eventi simulati).
+
+## T7 — Grafica leggera su telefono (2026-11-10, approvato dall'utente)
+
+Misura di partenza (headless, scena di gara): 128 draw call, 1,53 milioni di triangoli; la folla seduta è circa il 60%.
+
+- Modalità "leggera" attiva di default su touch (`LITE` in `js/game.js`); "alta" si sceglie dal menu di pausa, si salva nel record e ricarica la pagina.
+- Leggera: pixel ratio 1, niente antialias, ombre 1024 con `PCFShadowMap`.
+- Leggera: pubblico seduto low-poly (`kSedutoLite` in `js/figuranti.js`).
+- Leggera: alberi ridotti a circa 3/8 con chioma e tronco low-poly (`js/world.js`).
+- Leggera: fanno ombra solo cavallo e Moro.
+- Ovunque: soglia della qualità adattiva da 30 a 20 ms.
+- Escluso: ottimizzazione dell'HUD.

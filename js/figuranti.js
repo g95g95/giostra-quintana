@@ -297,6 +297,17 @@
     return k;
   }
 
+  // Seduto per la grafica leggera: 5 parallelepipedi, 60 triangoli invece di 174.
+  function kSedutoLite() {
+    const k = new Kit();
+    k.box(0.3, 0.16, 0.5, 0, 0.52, -0.3, W, SC);
+    k.box(0.2, 0.6, 0.24, 0.1, 0.88, -0.56, W, SA, { rx: 0.08 });
+    k.box(0.2, 0.6, 0.24, -0.1, 0.88, -0.56, W, SB, { rx: 0.08 });
+    k.box(0.19, 0.23, 0.2, 0, 1.28, -0.52, W, SK);
+    k.box(0.21, 0.07, 0.22, 0, 1.41, -0.54, W, SH);
+    return k;
+  }
+
   function figMaterial(side) {
     const m = new THREE.MeshLambertMaterial({ vertexColors: true, side });
     m.onBeforeCompile = (sh) => {
@@ -541,6 +552,7 @@
     const L = Q.LAYOUT;
     const tr = Q.track;
     const player = (opts && opts.playerSestiereId) || null;
+    const lite = !!(opts && opts.lite);
     const rnd = rng(20240);
     const pick = (a) => a[Math.floor(rnd() * a.length)];
     const jit = (a) => (rnd() - 0.5) * 2 * a;
@@ -722,7 +734,7 @@
       const geo = kits[name].geometry();
       if (!recs[name].length) continue;
       const mesh = instanced(geo, recs[name], matFig, 'fig-' + name);
-      mesh.castShadow = true;
+      mesh.castShadow = !lite;
       group.add(mesh);
       field.push({ mesh, recs: recs[name] });
     }
@@ -736,6 +748,7 @@
     group.add(aste);
 
     const flagM = flagMesh(flags, atlas());
+    flagM.castShadow = !lite;
     group.add(flagM);
     const flagPos = flagM.geometry.attributes.position;
     const flagNor = flagM.geometry.attributes.normal;
@@ -756,13 +769,13 @@
     props.tube([bar[0].x, pc.h + 2.95, bar[0].z], [bar[1].x, pc.h + 2.95, bar[1].z], 0.018, 0.018, 5, WOOD, 0);
     props.ball(0.05, palioPos.x, pc.h + 3.04, palioPos.z, GOLD, 0, { ws: 6, hs: 4 });
     const propM = new THREE.Mesh(props.geometry(), new THREE.MeshLambertMaterial({ vertexColors: true }));
-    propM.castShadow = true;
+    propM.castShadow = !lite;
     propM.receiveShadow = true;
     propM.name = 'arredi';
     group.add(propM);
 
     // 6. Pubblico: tribune 'pubblico' in 4 mesh a fasi alterne, curva dei figuranti in 6 spicchi.
-    const seatGeo = kSeduto().geometry();
+    const seatGeo = (lite ? kSedutoLite() : kSeduto()).geometry();
     const matCrowd = figMaterial(THREE.FrontSide);
     const pub = [[], [], [], []];
     const tifo = TIFO_ORDER.map(() => []);
