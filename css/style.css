@@ -112,7 +112,7 @@ kbd {
 .sestiere .scudo { width: 46px; height: 56px; }
 .sestiere.scelto { background: #fffaf0; border-color: var(--cremisi); box-shadow: 0 0 0 2px var(--oro), 0 6px 14px rgba(0, 0, 0, 0.25); }
 .sestiere.scelto b { color: var(--cremisi); }
-@media (max-width: 760px) { .sestieri { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px) { .sestieri { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ---------- intro ---------- */
 #intro { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
@@ -321,4 +321,21 @@ html.touch .mappa canvas { width: 60px; height: 132px; }
   .menu-carta { padding: 8px 12px; }
   .sestiere { font-size: 11px; }
   .pulsanti { margin-top: 8px; }
+}
+
+/* ---------- telefono in verticale: tutto il menu senza scorrere ---------- */
+@media (max-width: 560px) and (orientation: portrait) {
+  #menu { padding: 2vh 10px 2vh; gap: 10px; }
+  .stendardo { padding: 8px 18px 24px; }
+  .stendardo h1 { font-size: clamp(21px, 6.6vw, 30px); letter-spacing: 0.04em; }
+  .stendardo p { font-size: 10px; letter-spacing: 0.14em; }
+  .menu-carta { padding: 12px 14px 12px; width: 100%; }
+  .menu-carta h2 { font-size: 16px; margin-bottom: 8px; }
+  .menu-carta h2::after { display: none; }
+  .sestieri { gap: 8px; }
+  .sestiere { padding: 8px 4px 6px; font-size: 13px; gap: 4px; }
+  .sestiere .scudo { width: 36px; height: 44px; }
+  .menu-carta .pulsanti { flex-direction: column-reverse; align-items: stretch; gap: 10px; margin-top: 12px; }
+  .menu-carta button:not(.sestiere) { font-size: 16px; padding: 10px 14px; }
+  .record { margin-top: 8px; font-size: 12px; }
 }
